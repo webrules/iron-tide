@@ -17,7 +17,7 @@ Choose Easy, Normal, or Hard, then begin the operation. Your MCV starts selected
 
 ## Controls
 
-On iPad and other touch screens, drag the battlefield with one finger to pan. Tap to select units or place a completed building. You can also tap or drag the minimap to navigate. Mouse drag selection and keyboard controls remain available on desktop.
+On iPhone, iPad, and other touch screens, drag with one finger to pan and pinch with two fingers to zoom. The + and − buttons also zoom. Tap to select units; tap ORDER, then a destination, enemy, or transport to command them. Tap CANCEL to leave a command or placement mode. On phones, BUILD opens or closes production. Tap a completed building card, close production, then tap the map to place it. The minimap also supports tap and drag navigation. Mouse and keyboard controls remain available on desktop.
 
 | Input | Action |
 | --- | --- |

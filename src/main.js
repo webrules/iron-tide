@@ -182,17 +182,52 @@ $('help').addEventListener('click', openHelp); $('close-help').addEventListener(
 $('restart').addEventListener('click', () => window.location.reload()); $('inspect').addEventListener('click', () => { $('result').hidden = true; });
 
 const battle = $('battle');
+const touches = new Map();
+const gesture = () => {
+  const [a, b] = [...touches.values()];
+  return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, distance: Math.hypot(a.x - b.x, a.y - b.y) };
+};
+let pinch = null;
+const touchControls = document.createElement('nav');
+touchControls.className = 'touch-controls';
+touchControls.setAttribute('aria-label', 'Touch controls');
+touchControls.innerHTML = '<button id="zoom-out" aria-label="Zoom out">−</button><button id="zoom-in" aria-label="Zoom in">+</button><button id="touch-order">ORDER</button><button id="touch-cancel">CANCEL</button><button id="toggle-build" aria-expanded="false" aria-controls="sidebar">BUILD</button>';
+$('viewport').append(touchControls);
+for (const [id, factor] of [['zoom-out', 1 / 1.2], ['zoom-in', 1.2]]) $(id).addEventListener('click', () => renderer.zoomAt(factor, renderer.width / 2, renderer.height / 2));
+$('touch-order').addEventListener('click', () => { setMode('order'); $('placement-hint').textContent = 'TAP A DESTINATION, ENEMY, OR TRANSPORT'; });
+$('touch-cancel').addEventListener('click', () => setMode(null));
+$('toggle-build').addEventListener('click', () => {
+  const open = $('app').classList.toggle('build-open');
+  $('toggle-build').setAttribute('aria-expanded', String(open));
+  $('toggle-build').textContent = open ? 'CLOSE' : 'BUILD';
+});
 battle.addEventListener('contextmenu', e => e.preventDefault());
 battle.addEventListener('pointerdown', e => {
   if (!started) return; sound.unlock(); battle.focus();
-  if (pointer) return;
   const rect = battle.getBoundingClientRect(), x = e.clientX - rect.left, y = e.clientY - rect.top;
+  if (e.pointerType === 'touch') {
+    touches.set(e.pointerId, { x, y });
+    battle.setPointerCapture(e.pointerId);
+    if (touches.size > 1) { pinch = gesture(); if (pointer) pointer.dragged = true; renderer.selectionBox = null; return; }
+  }
+  if (pointer) return;
   if (e.button === 2) { if (!game.ended) issue(x, y); return; }
   pointer = { id: e.pointerId, touch: e.pointerType === 'touch', x, y, lastX: x, lastY: y, button: e.button, dragged: false }; battle.setPointerCapture(e.pointerId);
 });
 battle.addEventListener('pointermove', e => {
   const rect = battle.getBoundingClientRect(), x = e.clientX - rect.left, y = e.clientY - rect.top;
   renderer.mouse = renderer.toWorld(x, y); renderer.hover = renderer.hit(x, y);
+  if (touches.has(e.pointerId)) {
+    touches.set(e.pointerId, { x, y });
+    if (touches.size > 1) {
+      const next = gesture();
+      if (pinch) {
+        renderer.pan(pinch.x - next.x, pinch.y - next.y);
+        if (pinch.distance > 0 && next.distance > 0) renderer.zoomAt(next.distance / pinch.distance, next.x, next.y);
+      }
+      pinch = next; return;
+    }
+  }
   if (!pointer || pointer.id !== e.pointerId) return;
   if (pointer.touch) {
     if (!pointer.dragged && Math.hypot(x - pointer.x, y - pointer.y) <= 8) return;
@@ -203,11 +238,14 @@ battle.addEventListener('pointermove', e => {
   pointer.lastX = x; pointer.lastY = y;
 });
 battle.addEventListener('pointerup', e => {
+  if (touches.size > 1 && touches.has(e.pointerId)) { releaseTouch(e); return; }
+  touches.delete(e.pointerId);
   if (!pointer || pointer.id !== e.pointerId || pointer.button !== e.button) return;
   const rect = battle.getBoundingClientRect(), x = e.clientX - rect.left, y = e.clientY - rect.top, world = renderer.toWorld(x, y), hit = renderer.hit(x, y);
   if (pointer.button === 0 && !(pointer.touch && pointer.dragged)) {
     if (mode && !game.ended) {
-      if (renderer.placement) { if (game.place(renderer.placement, 0, world.x, world.y)) setMode(null); processEvents(); updateUI(true); }
+      if (mode === 'order') { setMode(null); issue(x, y); }
+      else if (renderer.placement) { if (game.place(renderer.placement, 0, world.x, world.y)) setMode(null); processEvents(); updateUI(true); }
       else if (mode === 'attack') { game.order(selectedUnits().map(u => u.id), { type: 'attackMove', x: world.x, y: world.y }); renderer.marker = { ...world, attack: true, until: performance.now() + 800 }; sound.play('order', .06); setMode(null); }
       else if (hit?.team === 0 && TYPES[hit.type].kind === 'building') { if (mode === 'sell') game.sell(hit); else { hit.repair = !hit.repair; message(hit.repair ? 'Repair crews dispatched.' : 'Repairs stopped.'); } updateUI(true); }
     } else if (pointer.dragged && renderer.selectionBox) {
@@ -217,7 +255,17 @@ battle.addEventListener('pointerup', e => {
   }
   pointer = null; renderer.selectionBox = null;
 });
-function cancelPointer(e) { if (pointer?.id === e.pointerId) { pointer = null; renderer.selectionBox = null; } }
+function releaseTouch(e) {
+  touches.delete(e.pointerId);
+  pinch = touches.size > 1 ? gesture() : null;
+  const remaining = touches.entries().next().value;
+  pointer = remaining ? { id: remaining[0], touch: true, ...remaining[1], lastX: remaining[1].x, lastY: remaining[1].y, button: 0, dragged: true } : null;
+  renderer.selectionBox = null;
+}
+function cancelPointer(e) {
+  if (touches.has(e.pointerId)) releaseTouch(e);
+  else if (pointer?.id === e.pointerId) { pointer = null; renderer.selectionBox = null; }
+}
 battle.addEventListener('pointercancel', cancelPointer);
 battle.addEventListener('lostpointercapture', cancelPointer);
 battle.addEventListener('pointerleave', () => { renderer.hover = null; });
@@ -230,7 +278,7 @@ $('minimap').addEventListener('pointerup', () => { miniDrag = false; });
 $('minimap').addEventListener('pointercancel', () => { miniDrag = false; });
 $('minimap').addEventListener('lostpointercapture', () => { miniDrag = false; });
 
-if (navigator.maxTouchPoints > 0) $('order-status').textContent = 'DRAG MAP TO PAN · TAP TO SELECT · DRAG MINIMAP TO NAVIGATE';
+if (navigator.maxTouchPoints > 0) $('order-status').textContent = 'DRAG TO PAN · PINCH TO ZOOM · TAP TO SELECT';
 
 window.addEventListener('keydown', e => {
   if (!started || !['BUTTON', 'CANVAS', 'BODY'].includes(document.activeElement.tagName)) return;
@@ -257,7 +305,7 @@ window.addEventListener('keyup', e => {
   else if (k === 'a' && selectedUnits().some(u => TYPES[u.type].damage)) setMode('attack');
   else if (k === 's' && selectedUnits().length) stop();
 });
-window.addEventListener('blur', () => { keys.clear(); keyTimes.clear(); pointer = null; renderer.selectionBox = null; });
+window.addEventListener('blur', () => { keys.clear(); keyTimes.clear(); touches.clear(); pinch = null; pointer = null; renderer.selectionBox = null; });
 document.addEventListener('visibilitychange', () => { if (document.hidden && started && !paused && !game.ended) { togglePause(); message('Battle paused while this tab is in the background.'); } });
 window.addEventListener('resize', () => renderer.resize());
 

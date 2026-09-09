@@ -17,7 +17,10 @@ try {
   await page.locator('#pause').tap();
   const snapshot = () => page.evaluate(() => ({ camera: { ...ironTide.renderer.camera }, selected: [...ironTide.renderer.selected], box: ironTide.renderer.selectionBox }));
   const client = await context.newCDPSession(page);
-  const touch = (type, points) => client.send('Input.dispatchTouchEvent', { type, touchPoints: points.map(([x, y, id = 1]) => ({ x, y, id })) });
+  const touch = async (type, points) => {
+    await client.send('Input.dispatchTouchEvent', { type, touchPoints: points.map(([x, y, id = 1]) => ({ x, y, id })) });
+    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  };
   const before = await snapshot();
   assert.equal(await page.locator('#battle').evaluate(el => getComputedStyle(el).touchAction), 'none');
   await touch('touchStart', [[450, 340]]);
@@ -46,6 +49,40 @@ try {
   await page.mouse.move(480, 350);
   assert.ok((await snapshot()).box, 'Mouse drag still box-selects');
   await page.mouse.up();
+  for (const viewport of [{ width: 390, height: 844 }, { width: 375, height: 667 }, { width: 844, height: 390 }]) {
+    await page.setViewportSize(viewport);
+    await page.reload();
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, 'Phone layout fits viewport');
+    await page.locator('#start').tap();
+    await page.locator('#pause').tap();
+    const original = await snapshot();
+    const x = viewport.width / 2, y = viewport.height > 500 ? 300 : 170;
+    await touch('touchStart', [[x - 30, y, 1], [x + 30, y, 2]]);
+    await touch('touchMove', [[x - 65, y, 1], [x + 65, y, 2]]);
+    const enlarged = await snapshot();
+    assert.ok(enlarged.camera.zoom > original.camera.zoom, 'Pinch out zooms in');
+    await touch('touchMove', [[x - 40, y, 1], [x + 40, y, 2]]);
+    assert.ok((await snapshot()).camera.zoom < enlarged.camera.zoom, 'Pinch in zooms out');
+    await touch('touchEnd', [[x - 40, y, 1]]);
+    const oneFinger = await snapshot();
+    await touch('touchMove', [[x + 60, y, 2]]);
+    await touch('touchEnd', []);
+    assert.ok((await snapshot()).camera.x < oneFinger.camera.x, 'Remaining finger pans without a jump');
+    assert.deepEqual((await snapshot()).selected, original.selected, 'Pinch preserves selected unit');
+    const zoom = (await snapshot()).camera.zoom;
+    await page.locator('#zoom-out').tap();
+    assert.ok((await snapshot()).camera.zoom < zoom, 'Zoom button works');
+    await page.locator('#zoom-in').tap();
+    await page.locator('#toggle-build').tap();
+    assert.equal(await page.locator('#sidebar').isVisible(), true);
+    await page.locator('#toggle-build').tap();
+    assert.equal(await page.locator('#sidebar').isVisible(), false);
+    await page.locator('#touch-order').tap();
+    assert.match(await page.locator('#placement-hint').innerText(), /DESTINATION/);
+    await page.locator('#touch-cancel').tap();
+    assert.equal(await page.locator('#placement-hint').isVisible(), false);
+    await page.screenshot({ path: `test-results/phone-${viewport.width}.png` });
+  }
   assert.deepEqual(errors, []);
   console.log('Touch pan, tap, cancellation, minimap, and desktop selection passed.');
 } finally {

@@ -2,3 +2,20 @@
 
 /* Keep map gestures in the game while allowing sidebar scrolling. */
 #battle,#minimap{touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.touch-controls{display:none;position:absolute;top:68px;right:12px;gap:5px}.touch-controls button{min-width:44px;min-height:44px;background:#14241ff2;font:11px var(--mono)}
+@media(pointer:coarse){.touch-controls{display:flex}#toggle-build{display:none}.clock button,.selection-actions button{min-width:40px;min-height:40px}.clock{height:auto}}
+@media(max-width:919px){
+ #app{min-width:0;grid-template-columns:minmax(0,1fr);grid-template-rows:54px minmax(0,1fr)}
+ .topbar{padding:0 12px;gap:10px}.brand{font-size:17px;letter-spacing:1px;gap:6px}.brand small,.star,.operation{display:none}.economy{gap:12px}.economy>div{min-width:0}.economy small{font-size:7px;letter-spacing:0}.economy strong{font-size:14px}.economy strong span{display:none}
+ .field-top{top:8px;left:8px;right:8px;justify-content:flex-end}.sector{display:none}.clock{padding:2px}.clock button{min-width:38px;min-height:40px}.clock>span{display:none}
+ .touch-controls{display:flex;top:58px;right:8px}.touch-controls #toggle-build{display:block}.touch-controls button{padding:0 9px}
+ #sidebar{display:none;position:absolute;right:0;bottom:0;width:min(100%,360px);height:55dvh;z-index:3;border:1px solid #667052;padding-bottom:env(safe-area-inset-bottom)}
+ .build-open #sidebar{display:flex}.commander,.mission,.sidebar-bottom{display:none}.production-title{padding:10px 12px}.production-title button{min-height:36px;padding:6px}#build-tabs{padding:0 12px}#build-tabs button{min-height:44px}#build-list{padding:8px 12px}.build-card{min-height:58px}.build-card strong{font-size:12px}.build-card small{font-size:10px}.queues{padding:8px 12px;max-height:75px}
+ .minimap-panel{left:8px;bottom:112px;width:112px;padding:5px}#minimap{width:100px;height:75px;margin-top:0}.minimap-panel .panel-label,.map-legend{display:none}
+ #selection-panel{left:8px;right:8px;bottom:calc(25px + env(safe-area-inset-bottom));padding:8px;min-height:70px}.selected-content{gap:6px}.selected-info{min-width:65px}.selected-info strong{font-size:10px}.selected-info small{font-size:8px}.selection-actions{gap:4px}.selection-actions button{min-height:44px;padding:7px}.selection-empty{padding:6px}.selection-empty small{font-size:10px}
+ .field-footer{padding:0 8px;font-size:7px;bottom:env(safe-area-inset-bottom)}#unit-count{display:none}#message-stack{top:110px;left:8px;max-width:calc(100% - 16px)}#placement-hint{top:110px;max-width:95%;white-space:normal;text-align:center;font-size:10px}#pause-banner{padding:15px;font-size:14px;letter-spacing:1px}
+ .overlay{padding:12px}.briefing-card,.manual-card,.result-card{width:100%;max-height:calc(100dvh - 24px);overflow:auto}.briefing-top{padding:12px;font-size:7px;letter-spacing:0}.briefing-body{padding:18px}.briefing-insignia{display:none}.briefing-copy h2{font-size:42px;margin:12px 0}.briefing-copy p{font-size:12px;line-height:1.6}.briefing-facts{gap:10px;letter-spacing:0}.difficulty-picker{padding:0 18px 16px}.difficulty-picker>div{gap:6px}.difficulty-picker button{padding:10px 6px;min-height:70px}.difficulty-picker strong{font-size:10px;letter-spacing:0}.difficulty-picker small{font-size:9px}.briefing-bottom{padding:14px 18px;flex-wrap:wrap}.briefing-bottom .primary{width:100%}.manual-card{padding:18px}.manual-columns{grid-template-columns:1fr;gap:10px}.result-card{padding:20px}.result-card h2{font-size:36px}
+}
+@media(max-width:919px) and (orientation:landscape){
+ #app{grid-template-rows:44px minmax(0,1fr)}.touch-controls{top:8px;left:8px;right:auto}.minimap-panel{bottom:30px}#selection-panel{left:132px;right:8px;bottom:28px;min-height:58px}#sidebar{height:calc(100dvh - 104px)}#placement-hint{top:61px}#message-stack{top:61px}.briefing-body{padding:12px 18px}.briefing-copy h2{font-size:30px}.briefing-copy p,.briefing-facts{display:none}.difficulty-picker{padding-bottom:8px}.briefing-bottom{padding:10px 18px}.briefing-bottom p{display:none}
+}

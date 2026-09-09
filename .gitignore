@@ -1,5 +1,6 @@
 node_modules/
 dist/
+test-results/
 iron-tide-cloudflare.zip
 .wrangler/
 .env
