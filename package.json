@@ -4,6 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "build": "node build.mjs",
+    "deploy": "npm run build && npx wrangler deploy",
     "start": "node server.mjs",
     "test": "node --test --test-isolation=none tests/*.test.mjs"
   }

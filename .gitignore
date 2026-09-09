@@ -1,4 +1,7 @@
 node_modules/
+dist/
+iron-tide-cloudflare.zip
+.wrangler/
 .env
 .env.*
 !.env.example
