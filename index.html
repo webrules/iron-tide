@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#111815">
+  <title>IRON TIDE — Operation Coldwater</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='8' fill='%23101816'/%3E%3Cpath d='m32 8 6 17 18 1-14 11 5 18-15-10-15 10 5-18L8 26l18-1z' fill='%23ef5a43'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main id="app">
+    <header class="topbar">
+      <div class="brand"><span class="star">★</span><div>IRON TIDE<small>TACTICAL COMMAND · SOVIET UNION</small></div></div>
+      <div class="operation"><span class="live-dot"></span> OPERATION COLDWATER <span class="tag">SKIRMISH / 01</span></div>
+      <div class="economy"><div><small>AVAILABLE FUNDS</small><strong id="credits">₽ 12,000</strong></div><div><small>POWER GRID</small><strong id="power">0 / 0 <span>MW</span></strong></div></div>
+    </header>
+    <section id="viewport" aria-label="Isometric battlefield">
+      <canvas id="battle" tabindex="0" aria-label="Battlefield. Left click to select, right click to command, arrow keys to pan."></canvas>
+      <div class="field-top"><div class="sector"><span>THE COLDWATER STRAIT</span><small>62° 18′ N &nbsp; / &nbsp; 04° 42′ E</small></div><div class="clock"><span id="difficulty-label">NORMAL</span><time id="time">00:00</time><button id="pause" title="Pause (Space)" aria-label="Pause">Ⅱ</button><button id="speed" title="Change simulation speed">1×</button><button id="sound" title="Toggle sound" aria-label="Toggle sound">♫</button><button id="help" title="Field manual (?)">?</button></div></div>
+      <div id="message-stack" aria-live="polite"></div>
+      <div id="placement-hint" hidden></div>
+      <div id="pause-banner" hidden><span>Ⅱ</span> BATTLE PAUSED<small>SPACE TO RESUME</small></div>
+      <div class="minimap-panel"><div class="panel-label">THEATER OVERVIEW <span>LIVE</span></div><canvas id="minimap" width="232" height="174" aria-label="Minimap. Click to move the camera."></canvas><div class="map-legend"><span><i class="red"></i>SOVIET</span><span><i class="blue"></i>ALLIED</span><span><i class="gold"></i>ORE</span></div></div>
+      <div id="selection-panel"><div class="selection-empty"><span class="crosshair">⌖</span><div>AWAITING ORDERS<small>Select a unit or structure to issue commands.</small></div></div></div>
+      <div class="field-footer"><span id="order-status">LMB SELECT &nbsp; / &nbsp; RMB COMMAND &nbsp; / &nbsp; WASD PAN</span><span id="unit-count">1 UNIT · 0 STRUCTURES</span></div>
+    </section>
+    <aside id="sidebar">
+      <div class="commander"><div class="faction-mark">★</div><div><small>YOUR FORCES</small><h1>Soviet command</h1><span><i class="live-dot"></i> FIELD OPERATIONS</span></div></div>
+      <div class="sidebar-section mission"><div class="panel-label">MISSION DIRECTIVE <span>01</span></div><h2>Control the strait.</h2><p>Build your fleet. Break the coastline.<br>Finish the fight on their shore.</p><div id="mission-progress">Deploy your MCV to establish a base.</div></div>
+      <div class="production-title"><span>PRODUCTION</span><button id="repair-mode" title="Repair structures (R)">REPAIR</button><button id="sell-mode" title="Sell structures (X)">SELL</button></div>
+      <nav id="build-tabs" aria-label="Production categories"><button class="active" data-tab="structures">▦<span>BASE</span></button><button data-tab="infantry">♟<span>INFANTRY</span></button><button data-tab="vehicles">▰<span>ARMOR</span></button><button data-tab="fleet">⚓<span>NAVAL</span></button></nav>
+      <div id="build-list"></div>
+      <div class="queues"><div class="panel-label">ACTIVE QUEUES <span id="queue-count">0</span></div><div id="queue-list"><p class="muted">No production orders.</p></div></div>
+      <div class="sidebar-bottom"><span class="live-dot"></span><span id="intel">INTELLIGENCE LINK ESTABLISHED</span><kbd>?</kbd></div>
+    </aside>
+  </main>
+  <div id="briefing" class="overlay">
+    <div class="briefing-card">
+      <div class="briefing-top"><span>IRON TIDE / SINGLE-PLAYER SKIRMISH</span><span>FIELD ORDER № 001</span></div>
+      <div class="briefing-body"><div class="briefing-copy"><div class="eyebrow">SOVIET NAVAL COMMAND</div><h2>One strait.<br><em>No retreat.</em></h2><p>The Allies hold the northern coast. Establish your base, seize the island’s ore, and bring your cruisers to bear. Their inland command will fall to your tanks.</p><div class="briefing-facts"><span>01 ENEMY</span><span>~30 MINUTES</span><span>NO AIR WARFARE</span></div></div><div class="briefing-insignia"><div class="ring"><span>★</span><strong>СЕВЕРНЫЙ ФЛОТ</strong><small>NORTHERN FLEET · 1949</small></div></div></div>
+      <div class="difficulty-picker"><span>SELECT ENEMY DIFFICULTY</span><div><button data-difficulty="easy"><strong>EASY</strong><small>Time to establish your fleet</small></button><button data-difficulty="normal" class="active"><strong>NORMAL</strong><small>A coordinated opposition</small></button><button data-difficulty="hard"><strong>HARD</strong><small>Aggressive combined arms</small></button></div></div>
+      <div class="briefing-bottom"><p><b>FIRST ORDER</b> Select your MCV, then press <kbd>D</kbd> to deploy.<small>Destroy all enemy buildings and undeployed MCVs to win.</small></p><button id="start" class="primary">BEGIN OPERATION <span>↗</span></button></div>
+    </div>
+  </div>
+  <div id="manual" class="overlay" hidden><div class="manual-card"><div class="panel-label">FIELD MANUAL <button id="close-help" aria-label="Close manual">✕</button></div><h2>Command the coastline.</h2><div class="manual-columns"><section><h3>CONTROLS</h3><p><kbd>LMB</kbd> Select · drag to select units<br><kbd>Shift</kbd> Add/remove from selection<br><kbd>RMB</kbd> Move, attack, mine, or board transport<br><kbd>A</kbd> then click: attack-move<br><kbd>D</kbd> Deploy selected MCV<br><kbd>U</kbd> Unload selected transport at a beach<br><kbd>S</kbd> Stop selected units<br><kbd>Ctrl 1–9</kbd> Save group · <kbd>1–9</kbd> Select group<br><kbd>WASD / arrows</kbd> Pan · <kbd>Wheel</kbd> Zoom<br><kbd>Middle drag</kbd> Pan · <kbd>Home</kbd> Home base<br><kbd>Space</kbd> Pause · <kbd>Esc</kbd> Cancel<br><kbd>R / X</kbd> Repair / sell structure</p></section><section><h3>BUILD ORDER</h3><p>Deploy your MCV. Build a power plant, then a refinery (includes a miner). Add a barracks, war factory, and shipyard. Place buildings near your existing base; shipyards go in coastal water.</p><h3>WINNING THE WAR</h3><p>Cruisers bombard land and sea. Submarines detect nearby enemy subs; Allied destroyers detect from farther away. Detected subs can be hit by cruisers. Coastal guns need power.</p><p>Move a transport near your units and right-click it to board (6 cargo slots). Sail to a beach and unload. Tanks and miners use 2 slots; MCVs use 3. Deploy another MCV on the central island to expand.</p><p>Ore regenerates. Low power slows production. Repairs cost credits; selling returns half a structure’s price. No fog of war, aircraft, capture, superweapons, or saving.</p></section></div><button id="resume-help" class="primary">RETURN TO COMMAND →</button></div></div>
+  <div id="result" class="overlay" hidden><div class="result-card"><div class="eyebrow">OPERATION COLDWATER / AFTER-ACTION REPORT</div><span id="result-star">★</span><h2 id="result-title">VICTORY</h2><p id="result-description"></p><div id="result-stats"></div><button id="restart" class="primary">NEW OPERATION ↗</button><button id="inspect">INSPECT BATTLEFIELD</button></div></div>
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
