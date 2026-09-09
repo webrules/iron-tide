@@ -185,22 +185,27 @@ const battle = $('battle');
 battle.addEventListener('contextmenu', e => e.preventDefault());
 battle.addEventListener('pointerdown', e => {
   if (!started) return; sound.unlock(); battle.focus();
+  if (pointer) return;
   const rect = battle.getBoundingClientRect(), x = e.clientX - rect.left, y = e.clientY - rect.top;
   if (e.button === 2) { if (!game.ended) issue(x, y); return; }
-  pointer = { x, y, lastX: x, lastY: y, button: e.button, dragged: false }; battle.setPointerCapture(e.pointerId);
+  pointer = { id: e.pointerId, touch: e.pointerType === 'touch', x, y, lastX: x, lastY: y, button: e.button, dragged: false }; battle.setPointerCapture(e.pointerId);
 });
 battle.addEventListener('pointermove', e => {
   const rect = battle.getBoundingClientRect(), x = e.clientX - rect.left, y = e.clientY - rect.top;
   renderer.mouse = renderer.toWorld(x, y); renderer.hover = renderer.hit(x, y);
-  if (!pointer) return;
-  if (pointer.button === 1) renderer.pan(pointer.lastX - x, pointer.lastY - y);
+  if (!pointer || pointer.id !== e.pointerId) return;
+  if (pointer.touch) {
+    if (!pointer.dragged && Math.hypot(x - pointer.x, y - pointer.y) <= 8) return;
+    pointer.dragged = true;
+    renderer.pan(pointer.lastX - x, pointer.lastY - y);
+  } else if (pointer.button === 1) renderer.pan(pointer.lastX - x, pointer.lastY - y);
   else if (pointer.button === 0 && !mode && Math.hypot(x - pointer.x, y - pointer.y) > 5) { pointer.dragged = true; renderer.selectionBox = { x: Math.min(x, pointer.x), y: Math.min(y, pointer.y), w: Math.abs(x - pointer.x), h: Math.abs(y - pointer.y) }; }
   pointer.lastX = x; pointer.lastY = y;
 });
 battle.addEventListener('pointerup', e => {
-  if (!pointer || pointer.button !== e.button) return;
+  if (!pointer || pointer.id !== e.pointerId || pointer.button !== e.button) return;
   const rect = battle.getBoundingClientRect(), x = e.clientX - rect.left, y = e.clientY - rect.top, world = renderer.toWorld(x, y), hit = renderer.hit(x, y);
-  if (pointer.button === 0) {
+  if (pointer.button === 0 && !(pointer.touch && pointer.dragged)) {
     if (mode && !game.ended) {
       if (renderer.placement) { if (game.place(renderer.placement, 0, world.x, world.y)) setMode(null); processEvents(); updateUI(true); }
       else if (mode === 'attack') { game.order(selectedUnits().map(u => u.id), { type: 'attackMove', x: world.x, y: world.y }); renderer.marker = { ...world, attack: true, until: performance.now() + 800 }; sound.play('order', .06); setMode(null); }
@@ -212,7 +217,9 @@ battle.addEventListener('pointerup', e => {
   }
   pointer = null; renderer.selectionBox = null;
 });
-battle.addEventListener('pointercancel', () => { pointer = null; renderer.selectionBox = null; });
+function cancelPointer(e) { if (pointer?.id === e.pointerId) { pointer = null; renderer.selectionBox = null; } }
+battle.addEventListener('pointercancel', cancelPointer);
+battle.addEventListener('lostpointercapture', cancelPointer);
 battle.addEventListener('pointerleave', () => { renderer.hover = null; });
 battle.addEventListener('wheel', e => { e.preventDefault(); const r = battle.getBoundingClientRect(); renderer.zoomAt(e.deltaY < 0 ? 1.1 : 1 / 1.1, e.clientX - r.left, e.clientY - r.top); }, { passive: false });
 let miniDrag = false;
@@ -220,6 +227,10 @@ function miniNavigate(e) { const r = $('minimap').getBoundingClientRect(); rende
 $('minimap').addEventListener('pointerdown', e => { miniDrag = true; $('minimap').setPointerCapture(e.pointerId); miniNavigate(e); });
 $('minimap').addEventListener('pointermove', e => { if (miniDrag) miniNavigate(e); });
 $('minimap').addEventListener('pointerup', () => { miniDrag = false; });
+$('minimap').addEventListener('pointercancel', () => { miniDrag = false; });
+$('minimap').addEventListener('lostpointercapture', () => { miniDrag = false; });
+
+if (navigator.maxTouchPoints > 0) $('order-status').textContent = 'DRAG MAP TO PAN · TAP TO SELECT · DRAG MINIMAP TO NAVIGATE';
 
 window.addEventListener('keydown', e => {
   if (!started || !['BUTTON', 'CANVAS', 'BODY'].includes(document.activeElement.tagName)) return;

@@ -17,6 +17,8 @@ Choose Easy, Normal, or Hard, then begin the operation. Your MCV starts selected
 
 ## Controls
 
+On iPad and other touch screens, drag the battlefield with one finger to pan. Tap to select units or place a completed building. You can also tap or drag the minimap to navigate. Mouse drag selection and keyboard controls remain available on desktop.
+
 | Input | Action |
 | --- | --- |
 | Left-click / drag | Select one unit or a group |

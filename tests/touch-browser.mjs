@@ -1,0 +1,54 @@
+// Run with Playwright available (NODE_PATH is supported), using a disposable browser.
+import assert from 'node:assert/strict';
+import { createRequire } from 'node:module';
+import { spawn } from 'node:child_process';
+const { chromium } = createRequire(import.meta.url)('playwright');
+const server = spawn(process.execPath, ['server.mjs'], { env: { ...process.env, PORT: '4174' }, stdio: 'pipe' });
+let browser;
+try {
+  await new Promise((resolve, reject) => { server.stdout.once('data', resolve); server.once('error', reject); server.once('exit', code => reject(new Error(`Server exited: ${code}`))); });
+  browser = await chromium.launch({ channel: 'chrome', headless: true });
+  const context = await browser.newContext({ viewport: { width: 1180, height: 820 }, hasTouch: true, isMobile: true });
+  const page = await context.newPage();
+  const errors = [];
+  page.on('pageerror', e => errors.push(e.message));
+  await page.goto('http://127.0.0.1:4174');
+  await page.locator('#start').tap();
+  await page.locator('#pause').tap();
+  const snapshot = () => page.evaluate(() => ({ camera: { ...ironTide.renderer.camera }, selected: [...ironTide.renderer.selected], box: ironTide.renderer.selectionBox }));
+  const client = await context.newCDPSession(page);
+  const touch = (type, points) => client.send('Input.dispatchTouchEvent', { type, touchPoints: points.map(([x, y, id = 1]) => ({ x, y, id })) });
+  const before = await snapshot();
+  assert.equal(await page.locator('#battle').evaluate(el => getComputedStyle(el).touchAction), 'none');
+  await touch('touchStart', [[450, 340]]);
+  await touch('touchMove', [[520, 380]]);
+  await touch('touchEnd', []);
+  const after = await snapshot();
+  assert.ok(after.camera.x < before.camera.x && after.camera.y < before.camera.y, 'Finger drag pans both axes');
+  assert.deepEqual(after.selected, before.selected, 'Dragging preserves selection');
+  assert.equal(after.box, null, 'Touch drag does not box-select');
+  await page.locator('#battle').tap({ position: { x: 200, y: 200 } });
+  assert.deepEqual((await snapshot()).camera, after.camera, 'A tap does not pan');
+  await touch('touchStart', [[450, 340]]);
+  await touch('touchCancel', []);
+  await touch('touchStart', [[450, 340]]);
+  await touch('touchMove', [[400, 340]]);
+  await touch('touchEnd', []);
+  assert.ok((await snapshot()).camera.x > after.camera.x, 'Drag works after cancellation');
+  const mini = await page.locator('#minimap').boundingBox();
+  const priorMini = (await snapshot()).camera;
+  await touch('touchStart', [[mini.x + 30, mini.y + 30]]);
+  await touch('touchMove', [[mini.x + 80, mini.y + 60]]);
+  await touch('touchEnd', []);
+  assert.notDeepEqual((await snapshot()).camera, priorMini, 'Minimap touch drag navigates');
+  await page.mouse.move(400, 300);
+  await page.mouse.down();
+  await page.mouse.move(480, 350);
+  assert.ok((await snapshot()).box, 'Mouse drag still box-selects');
+  await page.mouse.up();
+  assert.deepEqual(errors, []);
+  console.log('Touch pan, tap, cancellation, minimap, and desktop selection passed.');
+} finally {
+  await browser?.close();
+  server.kill();
+}
