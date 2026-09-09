@@ -62,7 +62,9 @@ export class Renderer {
     for (let y = 19; y < 48; y += 2) for (let x = 1; x < SIZE - 1; x += 3) {
       if (g.map.tiles[y * SIZE + x] || !this.visibleScreen(x, y, 20)) continue;
       const p = project(x, y), phase = time * .7 + x * .8 + y * .4, alpha = .055 + Math.max(0, Math.sin(phase)) * .08;
-      c.fillStyle = `rgba(175,213,187,${alpha})`; c.fillRect(Math.round(p.x + Math.sin(phase) * 5), Math.round(p.y + Math.cos(phase) * 2), 8 + (x % 5), 1);
+      const wx = p.x + Math.sin(phase) * 5, wy = p.y + Math.cos(phase) * 2;
+      c.strokeStyle = `rgba(175,213,207,${alpha})`; c.lineWidth = 1;
+      c.beginPath(); c.moveTo(wx - 8, wy); c.quadraticCurveTo(wx, wy - 3, wx + 9 + x % 5, wy + 1); c.stroke();
     }
     // Ore is drawn from current quantities, so mined fields visibly thin out.
     for (let i = 0; i < g.map.ore.length; i++) {
@@ -127,10 +129,12 @@ export class Renderer {
   }
   decoration(e) {
     const c = this.ctx, p = project(e.x, e.y);
+    c.save(); c.translate(p.x, p.y); const scale = .75 + e.seed * .55; c.scale(scale, scale); c.translate(-p.x, -p.y);
     if (e.type === 'tree') {
       c.fillStyle = '#172f2566'; c.beginPath(); c.ellipse(p.x + 5, p.y + 2, 15, 5, 0, 0, Math.PI * 2); c.fill(); c.fillStyle = '#4a5238'; c.fillRect(p.x - 2, p.y - 18, 3, 19);
       for (let i = 0; i < 3; i++) polygon(c, [[p.x, p.y - 39 + i * 8], [p.x - 10 - i * 2, p.y - 20 + i * 7], [p.x + 11 + i * 2, p.y - 20 + i * 7]], ['#334f36', '#3b5a3b', '#496645'][i], '#294733');
     } else polygon(c, [[p.x - 9, p.y], [p.x - 4, p.y - 9], [p.x + 5, p.y - 7], [p.x + 11, p.y + 1], [p.x, p.y + 4]], '#8c9476', '#58694c');
+    c.restore();
   }
   entity(e, time) {
     const c = this.ctx, p = project(e.x, e.y), d = TYPES[e.type], selected = this.selected.has(e.id), hovered = this.hover?.id === e.id;
