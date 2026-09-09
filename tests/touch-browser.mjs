@@ -13,6 +13,7 @@ try {
   const errors = [];
   page.on('pageerror', e => errors.push(e.message));
   await page.goto('http://127.0.0.1:4174');
+  assert.equal(await page.evaluate(() => ironTide.renderer.terrain.ready), true, 'Photographic terrain atlas loads');
   await page.locator('#start').tap();
   await page.locator('#pause').tap();
   const snapshot = () => page.evaluate(() => ({ camera: { ...ironTide.renderer.camera }, selected: [...ironTide.renderer.selected], box: ironTide.renderer.selectionBox }));
@@ -52,6 +53,7 @@ try {
   for (const viewport of [{ width: 390, height: 844 }, { width: 375, height: 667 }, { width: 844, height: 390 }]) {
     await page.setViewportSize(viewport);
     await page.reload();
+    assert.equal(await page.evaluate(() => ironTide.renderer.terrain.ready), true, 'Terrain atlas loads on phone');
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, 'Phone layout fits viewport');
     await page.locator('#start').tap();
     await page.locator('#pause').tap();

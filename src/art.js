@@ -11,7 +11,7 @@ export function polygon(ctx, points, fill, stroke) {
 const canvas = (w, h) => { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; };
 
 // Bake continuous ground cover and bathymetry once; mobile frames reuse the bitmap.
-function naturalSurface(map, target, origin) {
+function naturalSurface(map, target, origin, texture) {
   const depth = new Float32Array(SIZE * SIZE).fill(99), queue = [];
   for (let i = 0; i < depth.length; i++) if (map.tiles[i]) { depth[i] = 0; queue.push(i); }
   for (let head = 0; head < queue.length; head++) {
@@ -34,10 +34,11 @@ function naturalSurface(map, target, origin) {
     else rgb = [86 + cover * 16, 111 + cover * 15, 67 + cover * 10];
     colors.set(rgb, i * 3);
   }
-  const baked = canvas(target.width / 2, target.height / 2), ctx = baked.getContext('2d'), pixels = ctx.createImageData(baked.width, baked.height);
+  const pixelScale = texture ? 1 : 2;
+  const baked = canvas(target.width / pixelScale, target.height / pixelScale), ctx = baked.getContext('2d'), pixels = ctx.createImageData(baked.width, baked.height);
   let grain = 7814;
   for (let py = 0; py < baked.height; py++) for (let px = 0; px < baked.width; px++) {
-    const world = unproject(px * 2 - origin.x, py * 2 - origin.y);
+    const world = unproject(px * pixelScale - origin.x, py * pixelScale - origin.y);
     if (world.x < -.5 || world.y < -.5 || world.x >= SIZE - .5 || world.y >= SIZE - .5) continue;
     const wx = Math.max(0, Math.min(SIZE - 1, world.x)), wy = Math.max(0, Math.min(SIZE - 1, world.y));
     const x = Math.floor(wx), y = Math.floor(wy), fx = wx - x, fy = wy - y;
@@ -47,6 +48,24 @@ function naturalSurface(map, target, origin) {
     const noise = ((grain >>> 24) / 255 - .5) * (map.tiles[Math.round(wy) * SIZE + Math.round(wx)] ? 12 : 3);
     const offset = (py * baked.width + px) * 4;
     for (let channel = 0; channel < 3; channel++) pixels.data[offset + channel] = (colors[a + channel] * (1 - fx) + colors[b + channel] * fx) * (1 - fy) + (colors[d + channel] * (1 - fx) + colors[e + channel] * fx) * fy + noise;
+    if (texture) {
+      // Mirrored sampling makes the photographic materials continuous at repeat boundaries.
+      const mirror = value => { const v = Math.floor(value) % 1024; return v < 512 ? v : 1023 - v; };
+      const tx = mirror(wx * 31), ty = mirror(wy * 31);
+      const weights = [(1 - fx) * (1 - fy), fx * (1 - fy), (1 - fx) * fy, fx * fy];
+      const cells = [a / 3, b / 3, d / 3, e / 3];
+      let red = 0, green = 0, blue = 0;
+      for (let n = 0; n < 4; n++) {
+        const type = map.tiles[cells[n]], quadrant = type === 0 ? 3 : type === 1 ? 0 : type === 2 ? 1 : 2;
+        const sample = ((ty + (quadrant > 1 ? 512 : 0)) * 1024 + tx + (quadrant % 2) * 512) * 4;
+        const deep = type === 0 ? Math.exp(-depth[cells[n]] / 3.4) : 0;
+        const light = type === 0 ? .72 + deep * .35 : .88;
+        red += (texture[sample] * light + deep * 12) * weights[n];
+        green += (texture[sample + 1] * light + deep * 36) * weights[n];
+        blue += (texture[sample + 2] * light + deep * 27) * weights[n];
+      }
+      pixels.data[offset] = red; pixels.data[offset + 1] = green; pixels.data[offset + 2] = blue;
+    }
     pixels.data[offset + 3] = 255;
   }
   ctx.putImageData(pixels, 0, 0);
@@ -57,14 +76,26 @@ export class TerrainArt {
   constructor(map) {
     this.map = map; this.canvas = canvas(3200, 1740); this.origin = { x: 1600, y: 80 }; this.decorations = [];
     this.draw();
+    this.ready = new Promise(resolve => {
+      const image = new Image();
+      image.onload = () => {
+        const atlas = canvas(1024, 1024), ctx = atlas.getContext('2d');
+        ctx.drawImage(image, 0, 0, 1024, 1024);
+        this.texture = ctx.getImageData(0, 0, 1024, 1024).data;
+        this.atlas = atlas; this.draw(); resolve(true);
+      };
+      image.onerror = () => resolve(false);
+      image.src = new URL('../assets/terrain-atlas.png', import.meta.url).href;
+    });
   }
   draw() {
-    naturalSurface(this.map, this.canvas, this.origin);
+    const context = this.canvas.getContext('2d'); context.resetTransform(); context.clearRect(0, 0, this.canvas.width, this.canvas.height); this.decorations = [];
+    naturalSurface(this.map, this.canvas, this.origin, this.texture);
     const c = this.canvas.getContext('2d'); c.imageSmoothingEnabled = false;
     c.translate(this.origin.x, this.origin.y); const random = seeded(7814);
     for (let y = 0; y < SIZE; y++) for (let x = 0; x < SIZE; x++) {
       const { x: px, y: py } = project(x, y), tile = this.map.tiles[y * SIZE + x];
-      for (let i = 0; i < (tile === 0 ? 5 : 18); i++) {
+      for (let i = 0; i < (this.texture ? 0 : tile === 0 ? 5 : 18); i++) {
         const tx = (random() - .5) * 41, ty = (random() - .5) * 19;
         if (Math.abs(tx) / 24 + Math.abs(ty) / 12 > .9) continue;
         c.fillStyle = tile === 0 ? ['#69948a28', '#81b7a425', '#173e4b24'][i % 3] : tile === 2 ? ['#e3d39a50', '#7e88654a', '#c5c09180'][i % 3] : ['#a6aa6740', '#324f352c', '#87965680'][i % 3];
@@ -84,9 +115,17 @@ export class TerrainArt {
       }
       if (tile === 3) {
         c.fillStyle = '#19372b55'; c.beginPath(); c.ellipse(px + 9, py + 8, 23, 8, .15, 0, Math.PI * 2); c.fill();
+        if (this.atlas) {
+          // Raised, textured crags replace the repeated flat polygon facets.
+          c.save(); c.beginPath();
+          c.moveTo(px - 24, py + 2); c.lineTo(px - 17, py - 9 - random() * 5); c.lineTo(px - 4, py - 14 - random() * 8); c.lineTo(px + 12, py - 11); c.lineTo(px + 23, py - 1); c.lineTo(px + 17, py + 9); c.lineTo(px - 6, py + 12); c.closePath(); c.clip();
+          c.drawImage(this.atlas, Math.floor(random() * 360), 512 + Math.floor(random() * 360), 140, 140, px - 26, py - 24, 54, 40);
+          const shade = c.createLinearGradient(px - 15, py - 15, px + 18, py + 12); shade.addColorStop(0, '#eef4dd20'); shade.addColorStop(1, '#10251c80'); c.fillStyle = shade; c.fillRect(px - 26, py - 24, 54, 40); c.restore();
+        } else {
         const a = [[px - 19, py + 1], [px - 11, py - 10], [px + 6, py - 14], [px + 21, py - 2], [px + 13, py + 9], [px - 7, py + 11]];
         polygon(c, a, '#7d8570', '#586752'); polygon(c, [[px + 6, py - 14], [px + 21, py - 2], [px + 13, py + 9], [px - 2, py + 3]], '#526554');
         polygon(c, [[px - 19, py + 1], [px - 11, py - 10], [px + 6, py - 14], [px - 2, py + 3]], '#92987c');
+        }
       }
       if (tile === 1 && !this.map.oreMax[y * SIZE + x] && (x < 7 || x > 58 || y < 3 || y > 60) && random() > .58) this.decorations.push({ x, y, type: random() > .3 ? 'tree' : 'rock', seed: random() });
     }

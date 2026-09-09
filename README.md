@@ -1,6 +1,6 @@
 # Iron Tide — Operation Coldwater
 
-A self-contained, single-player browser RTS inspired by Red Alert 2 naval combat. Command the Soviets against Allied AI on one fixed isometric battlefield. All artwork and sounds are generated locally in code; the game has no external assets, dependencies, accounts, or runtime network requests.
+A self-contained, single-player browser RTS inspired by Red Alert 2 naval combat. Command the Soviets against Allied AI on one fixed isometric battlefield. Terrain uses a bundled AI-generated photographic material atlas; units and sounds are generated in code. The game loads its files from the site itself and requires no accounts or third-party services.
 
 ## Play
 
@@ -59,7 +59,8 @@ Tap A, D, or S for unit commands; hold them for more than 200 ms to pan the came
 ## Implementation and verification
 
 - `src/engine.js`: deterministic simulation, terrain, A* pathfinding, economy, combat, production, transport logistics, and AI.
-- `src/art.js`: procedural terrain artwork.
+- `src/art.js`: photographic terrain blending, depth shading, and procedural fallback.
+- `assets/terrain-atlas.png`: bundled AI-generated grass, sand, rock, and ocean materials, baked into the map once after loading.
 - `src/sprite-models.js`: detailed building and unit models, faction insignia, armor, railings, animated treads, flags, and cranes.
 - `src/sprite-raster.js` and `src/sprites.js`: depth-buffered lighting, shadows, edge highlights, and cached directional sprites.
 - `src/render.js`: isometric Canvas renderer, selection, effects, range visualization, minimap, and camera.

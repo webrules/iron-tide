@@ -56,7 +56,9 @@ export class Renderer {
     const c = this.ctx, g = this.game, z = this.camera.zoom;
     c.setTransform(this.dpr, 0, 0, this.dpr, 0, 0); c.fillStyle = '#18383e'; c.fillRect(0, 0, this.width, this.height);
     c.save(); c.translate(this.width / 2, this.height / 2); c.scale(z, z); c.translate(-this.camera.x, -this.camera.y); c.imageSmoothingEnabled = false;
+    c.imageSmoothingEnabled = true;
     c.drawImage(this.terrain.canvas, -this.terrain.origin.x, -this.terrain.origin.y);
+    c.imageSmoothingEnabled = false;
     const time = g.time;
     // Moving foam lines and reflected light over the ocean.
     for (let y = 19; y < 48; y += 2) for (let x = 1; x < SIZE - 1; x += 3) {
