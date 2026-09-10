@@ -5,6 +5,7 @@ export class Renderer {
   constructor(canvas, minimap, game) {
     this.canvas = canvas; this.ctx = canvas.getContext('2d', { alpha: false }); this.mini = minimap; this.game = game;
     this.atlas = new SpriteAtlas(); this.terrain = new TerrainArt(game.map);
+    this.unitMaterials = new Image(); this.unitMaterials.src = new URL('../assets/unit-materials.png', import.meta.url).href;
     this.camera = { x: 0, y: 770, zoom: .9 }; this.width = 1000; this.height = 800;
     this.selected = new Set(); this.hover = null; this.mouse = { x: 0, y: 0 }; this.placement = null; this.selectionBox = null; this.marker = null;
     this.resize();
@@ -152,7 +153,12 @@ export class Renderer {
     const sprite = this.spriteFor(e,time);
     if (e.type === 'sub') c.globalAlpha = e.team === 0 && e.revealedUntil < time ? .67 : .9;
     const bob = d.domain === 'water' ? Math.round(Math.sin(time * 1.7 + e.id) * 1.3) : 0;
-    c.drawImage(sprite, Math.round(p.x) - 128, Math.round(p.y) - 168 + bob, 256, 224); c.globalAlpha = 1;
+    const sx = d.domain === 'water' ? 1024 : e.team === 0 ? 0 : 512;
+    c.drawImage(sprite, Math.round(p.x) - 128, Math.round(p.y) - 168 + bob, 256, 224);
+    if (this.unitMaterials.complete && this.unitMaterials.naturalWidth) {
+      c.save(); c.globalAlpha = .18; c.globalCompositeOperation = 'soft-light'; c.drawImage(this.unitMaterials, sx, d.domain === 'water' ? 512 : 0, 512, 512, Math.round(p.x) - 128, Math.round(p.y) - 168 + bob, 256, 224); c.restore();
+    }
+    c.globalAlpha = 1;
     if (e.mining) { c.fillStyle = time % .3 < .15 ? '#edcb75' : '#a78a45'; c.fillRect(p.x + 14, p.y - 16, 4, 3); }
     if (e.firingUntil > time) { const q = project(Math.cos(e.turretAngle) * 1.25, Math.sin(e.turretAngle) * 1.25); c.fillStyle = '#ffdf9a'; c.fillRect(p.x + q.x - 5, p.y + q.y - 24, 9, 6); c.fillStyle = '#fff1bd'; c.fillRect(p.x + q.x - 2, p.y + q.y - 25, 4, 7); }
     if (e.hp / e.maxHp < .45) {

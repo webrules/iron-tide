@@ -261,7 +261,7 @@ export class Game {
     this.events.push({ kind: 'sound', sound: d.weapon, x: e.x, y: e.y });
   }
   acquire(e) {
-    const def = TYPES[e.type], targets = this.entities.filter(t => this.canAttack(e, t) && distance(e, t) <= def.range + (e.order?.type === 'attackMove' ? 3 : .8));
+    const def = TYPES[e.type], alertRadius = e.order?.type === 'guard' ? Math.max(def.range + .8, e.order.radius || 5) : def.range + (e.order?.type === 'attackMove' ? 3 : .8), targets = this.entities.filter(t => this.canAttack(e, t) && distance(e, t) <= alertRadius);
     targets.sort((a, b) => (TYPES[a.type].damage ? -3 : 0) + distance(e, a) - ((TYPES[b.type].damage ? -3 : 0) + distance(e, b)));
     return targets[0];
   }
@@ -402,6 +402,12 @@ export class Game {
       if (o?.type === 'harvest') { this.harvest(e, dt); continue; }
       if (o?.type === 'board') { this.board(e, this.get(o.targetId), dt); continue; }
       if (o?.type === 'move') { if (this.move(e, o, dt, .3)) e.order = e.type === 'miner' ? { type: 'harvest', phase: 'seek' } : null; continue; }
+      if (o?.type === 'guard') {
+        const target = d.damage && this.acquire(e);
+        if (target) { this.attack(e, target, dt, false); continue; }
+        if (distance(e, o) > (o.radius || 1.2)) this.move(e, o, dt, .5);
+        continue;
+      }
       if (o?.type === 'attack') {
         const target = this.get(o.targetId); if (this.canAttack(e, target)) { this.attack(e, target, dt); continue; }
         e.order = null; e.path = [];

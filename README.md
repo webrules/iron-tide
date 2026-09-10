@@ -61,6 +61,7 @@ Tap A, D, or S for unit commands; hold them for more than 200 ms to pan the came
 - `src/engine.js`: deterministic simulation, terrain, A* pathfinding, economy, combat, production, transport logistics, and AI.
 - `src/art.js`: photographic terrain blending, depth shading, and procedural fallback.
 - `assets/terrain-atlas.png`: bundled AI-generated grass, sand, rock, and ocean materials, baked into the map once after loading.
+- `assets/unit-materials.png`: bundled photographic armor, steel, and fabric materials softly applied to unit sprites.
 - `src/sprite-models.js`: detailed building and unit models, faction insignia, armor, railings, animated treads, flags, and cranes.
 - `src/sprite-raster.js` and `src/sprites.js`: depth-buffered lighting, shadows, edge highlights, and cached directional sprites.
 - `src/render.js`: isometric Canvas renderer, selection, effects, range visualization, minimap, and camera.
